@@ -17,7 +17,12 @@ export default function SelectButton({ cities, selectedCity, onSelectCity, onRef
         ))}
       </div>
       
-      <button className="refresh-button" onClick={onRefresh} aria-label="Refresh">
+      <button 
+        className="refresh-button" 
+        onClick={onRefresh} 
+        aria-label="Refresh"
+        title="Refresh weather data"
+      >
       </button>
     </div>
   );

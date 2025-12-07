@@ -1,48 +1,33 @@
-/* eslint-disable no-unused-vars */
 import { useState, useEffect, useCallback, useRef } from 'react'
-import reactLogo from './assets/react.svg'
 import WeatherCard from './weatherCard'
-import viteLogo from '/vite.svg'
 import SelectButton from './SelectButton'
+import descriptions from './assets/descriptions.json'
 import './App.css'
 
 const cityData = {
   Toronto: {
-    city: "Toronto",
     latitude: 43.65107,
     longitude: -79.347015,
     country: "Canada",
-    temperatureC: null,
-    icon: null,
-    lastUpdated: null,
+    timezone: "America/Toronto",
   },
   London: {
-    city: "London",
     latitude: 51.5074,
     longitude: -0.1278,
     country: "United Kingdom",
-    temperatureC: null,
-    icon: null,
-    lastUpdated: null,
-    
+    timezone: "Europe/London",
   },
   "New York": {
-    city: "New York",
     latitude: 40.7128,
     longitude: -74.0060,
     country: "United States",
-    temperatureC: null,
-    icon: null,
-    lastUpdated: null,
+    timezone: "America/New_York",
   },
   Vancouver: {
-    city: "Vancouver",
     latitude: 49.2827,
     longitude: -123.1207,
     country: "Canada",
-    temperatureC: null,
-    icon: null,
-    lastUpdated: null,
+    timezone: "America/Vancouver",
   },
 };
 
@@ -53,51 +38,55 @@ const cities = [
   { name: "Vancouver" },
 ];
 
-// Helper function to format time ago
+
 const formatTimeAgo = (lastUpdated) => {
   if (!lastUpdated) return null;
   
-  try {
-    const now = new Date();
-    // Handle MySQL DATETIME format (e.g., "2024-01-01 12:00:00")
-    const updated = new Date(lastUpdated);
-    
-    // Check if date is valid
-    if (isNaN(updated.getTime())) {
-      console.error('Invalid date:', lastUpdated);
-      return null;
-    }
-    
-    const diffInSeconds = Math.floor((now - updated) / 1000);
-    
-    // If negative, the date is in the future (timezone issue or invalid date)
-    if (diffInSeconds < 0) {
-      return 'just now';
-    }
-    
-    if (diffInSeconds < 60) {
-      return `${diffInSeconds} second${diffInSeconds !== 1 ? 's' : ''} ago`;
-    }
-    
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
-    if (diffInMinutes < 60) {
-      return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
-    }
-    
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
-  } catch (err) {
-    console.error('Error formatting time ago:', err);
-    return null;
+  const now = new Date();
+  const updated = new Date(lastUpdated);
+  const diffInSeconds = Math.floor((now - updated) / 1000);
+
+  if (diffInSeconds < 60) {
+    return `${diffInSeconds} second${diffInSeconds !== 1 ? 's' : ''} ago`;
   }
+  
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
+  }
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
 };
 
-// todo
-const getWeatherIcon = (weatherCode) => {
-  if (weatherCode === 0) return "sunny";
-  if (weatherCode >= 1 && weatherCode <= 3) return "partly-cloudy";
-  if (weatherCode >= 51 && weatherCode <= 99) return "rain";
-  return "partly-cloudy"; 
+const getWeatherBackgroundType = (weatherCode) => {
+  const code = parseInt(weatherCode, 10);
+  if (code === 0 || code === 1) return 'sunny';
+  if (code === 2) return 'partly-cloudy';
+  if (code === 3) return 'cloudy';
+  if (code === 45 || code === 48) return 'foggy';
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rainy';
+  if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return 'snowy';
+  if (code >= 95 && code <= 99) return 'stormy';
+  return 'partly-cloudy';
+};
+
+const getWeatherInfo = (weatherCode, timezone = 'UTC') => {
+  const code = String(weatherCode);
+  let weatherInfo = descriptions[code];
+  
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    hour12: false
+  });
+  const hour = parseInt(formatter.format(new Date()), 10);
+  const isDay = hour >= 6 && hour < 20;
+  
+  return {
+    ...(isDay ? weatherInfo.day : weatherInfo.night),
+    isDay: isDay
+  };
 };
 
 function App() {
@@ -110,8 +99,6 @@ function App() {
   const lastUpdatedRef = useRef(null);
 
   const fetchWeatherData = useCallback(async (cityName) => {
-    if (!cityName) return;
-    
     setLoading(true);
     setError(null);
     
@@ -125,12 +112,26 @@ function App() {
       
       const data = await response.json();
       
+      const cityInfo = cityData[cityName];
+      const timezone = cityInfo?.timezone || 'UTC';
+      
+      const weatherInfo = getWeatherInfo(data.weatherCode, timezone);
+      const backgroundType = getWeatherBackgroundType(data.weatherCode);
+      const backgroundTypeWithTime = weatherInfo.isDay ? backgroundType : `${backgroundType}-night`;
+      
       const transformedData = {
         city: cityName,
         country: cityData[cityName]?.country,
         temperatureC: data.temperature,
-        icon: getWeatherIcon(data.weatherCode),
+        weatherCode: data.weatherCode,
+        description: weatherInfo.description,
+        image: weatherInfo.image,
+        backgroundType: backgroundTypeWithTime,
+        isDay: weatherInfo.isDay,
+        windSpeed: data.windSpeed,
+        timezone: timezone,
         lastUpdated: data.lastUpdated,
+        hourlyData: data.hourlyData || [],
       };
       
       setWeatherData(transformedData);
@@ -146,8 +147,6 @@ function App() {
 
   
   const updateAndFetchWeather = useCallback(async (cityName) => {
-    if (!cityName) return;
-    
     const cityInfo = cityData[cityName];
     if (!cityInfo || !cityInfo.latitude || !cityInfo.longitude) {
       console.error('City coordinates not found');
@@ -158,7 +157,6 @@ function App() {
     setError(null);
 
     try {
-      
       const updateResponse = await fetch('http://localhost:3000/weather/update', {
         method: 'POST',
         headers: {
@@ -187,8 +185,7 @@ function App() {
 
   useEffect(() => {
     updateAndFetchWeather(selectedCity);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount 
+  }, [updateAndFetchWeather, selectedCity]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -200,6 +197,39 @@ function App() {
     };
   }, [selectedCity, updateAndFetchWeather]);
 
+
+  // Helper to get day/night status for a city
+  const getIsDay = useCallback((timezone) => {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hour12: false
+    });
+    const hour = parseInt(formatter.format(new Date()), 10);
+    return hour >= 6 && hour < 20;
+  }, []);
+
+  // Update background based on weather and day/night
+  useEffect(() => {
+    if (!weatherData) {
+      document.body.className = '';
+      return;
+    }
+
+    const updateBackground = () => {
+      const cityInfo = cityData[weatherData.city];
+      const timezone = cityInfo?.timezone || 'UTC';
+      const isDay = getIsDay(timezone);
+      const baseBackgroundType = getWeatherBackgroundType(weatherData.weatherCode);
+      const backgroundTypeWithTime = isDay ? baseBackgroundType : `${baseBackgroundType}-night`;
+      document.body.className = `weather-bg-${backgroundTypeWithTime}`;
+    };
+
+    updateBackground();
+    const intervalId = setInterval(updateBackground, 60000);
+    return () => clearInterval(intervalId);
+  }, [weatherData, getIsDay]);
+
   // Update time ago display every second
   useEffect(() => {
     if (!weatherData?.lastUpdated) {
@@ -209,25 +239,19 @@ function App() {
     }
 
     lastUpdatedRef.current = weatherData.lastUpdated;
-    
-    // Update immediately
     setTimeAgo(formatTimeAgo(weatherData.lastUpdated));
 
-    // Update every second - use ref to get current value
     const intervalId = setInterval(() => {
       if (lastUpdatedRef.current) {
         setTimeAgo(formatTimeAgo(lastUpdatedRef.current));
       }
     }, 1000);
 
-    return () => {
-      clearInterval(intervalId);
-    };
+    return () => clearInterval(intervalId);
   }, [weatherData]);
 
   const handleSelectCity = (cityName) => {
     setSelectedCity(cityName);
-
     updateAndFetchWeather(cityName);
   };
 
@@ -237,14 +261,10 @@ function App() {
 
   return (
     <div className="app-container">
-
       <h1 className="dashboard-title">Weather Dashboard</h1>
-
       <div className="select-wrapper">
-
         <SelectButton cities={cities} selectedCity={selectedCity} onSelectCity={handleSelectCity} onRefresh={handleRefresh} />
       </div>
-
       <div className="card-wrapper">
         {timeAgo && (
           <div className="last-updated">
@@ -252,10 +272,15 @@ function App() {
           </div>
         )}
 
-        {loading && <p>Loading weather data...</p>}
         {error && !weatherData && <p style={{ color: 'red' }}>Error: {error}</p>}
 
-        {weatherData && <WeatherCard data={weatherData} />}
+        {loading ? (
+          <div className="weather-card loading-card">
+            <div className="loading-spinner"></div>
+          </div>
+        ) : (
+          weatherData && <WeatherCard data={weatherData} />
+        )}
       </div>
     </div>
   )

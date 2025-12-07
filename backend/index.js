@@ -3,14 +3,12 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const app = express();
 
-// Middleware to enable CORS
 app.use(cors());
 
-// Middleware to parse JSON request bodies
 app.use(express.json());
 
 // MySQL connection
-const connection = mysql.createConnection({ // should not be exposde
+const connection = mysql.createConnection({
   host: '127.0.0.1',
   user: 'root',
   password: 'GuppyAzam123', 
@@ -24,68 +22,6 @@ connection.connect(err => {
 
 const db = connection.promise();
 
-// Example route
-app.get('/', (req, res) => {
-  res.json({ message: 'Hello from Express API!' });
-});
-
-app.post('/geocode', async (req, res) => {
-  try {
-
-    const city = (req.body.city || '').trim();
-    if (!city) return res.status(400).json({ error: 'Missing city in request body' });
-
-    // 
-    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`;
-    const geoResp = await fetch(geoUrl);
-    if (!geoResp.ok) {
-      return res.status(502).json({ error: `Geocoding API responded ${geoResp.status}` });
-    }
-    const geoJson = await geoResp.json();
-    if (!geoJson.results || geoJson.results.length === 0) {
-      return res.status(404).json({ error: 'Location not found by geocoding API' });
-    }
-
-    const result = geoJson.results[0];
-    const name = result.name || city;
-    const country = result.country || 'Unknown';
-    const latitude = Number(result.latitude);
-    const longitude = Number(result.longitude);
-
-    // 2) Check if city already exists (by name+country)
-    const [rows] = await db.query(
-      'SELECT CityId, Latitude, Longitude FROM weatherData WHERE CityName = ? AND CountryName = ? LIMIT 1',
-      [name, country]
-    );
-
-    if (rows.length > 0) {
-      const existing = rows[0];
-    await db.query(
-        'UPDATE weatherData SET Latitude = ?, Longitude = ? WHERE CityId = ?',
-        [latitude, longitude, existing.id]
-      );
-      return res.json({
-        id: existing.id, name, country, latitude, longitude, created: false,
-        message: 'City existed; coordinates updated'
-      });
-    }
-
-    await db.query(
-      'INSERT INTO weatherData (CityName, CountryName, Latitude, Longitude) VALUES (?, ?, ?, ?)',
-      [ name, country, latitude, longitude]
-    );
-
-    return res.status(201).json({
-
-      message: 'City saved'
-    });
-
-  } catch (err) {
-    console.error('Error in /geocode:', err);
-    return res.status(500).json({ error: err.message || 'Internal server error' });
-  }
-});
-
 app.get('/weather', async (req, res) => {
   try {
 
@@ -93,7 +29,7 @@ app.get('/weather', async (req, res) => {
     if (!city) return res.status(400).json({ error: 'Missing ?city= parameter' });
 
     const [rows] = await db.query(
-      'SELECT CityName, Temperature, WeatherCode, LastUpdated FROM weatherData WHERE CityName = ? LIMIT 1',
+      'SELECT CityName, Temperature, WeatherCode, LastUpdated, Latitude, Longitude FROM weatherData WHERE CityName = ? LIMIT 1',
       [city]
     );
 
@@ -102,10 +38,63 @@ app.get('/weather', async (req, res) => {
     }
 
     const row = rows[0];
+    
+    // Fetch current weather data for wind speed and hourly forecast
+    let windSpeed = null;
+    let hourlyData = [];
+    if (row.Latitude && row.Longitude) {
+      try {
+        // Get current weather and hourly forecast
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${row.Latitude}&longitude=${row.Longitude}&current_weather=true&hourly=temperature_2m&past_days=1&forecast_days=1`;
+        
+        const weatherResponse = await fetch(weatherUrl);
+
+        if (weatherResponse.ok) {
+          const weatherJson = await weatherResponse.json();
+          
+          if (weatherJson.current_weather && weatherJson.current_weather.windspeed !== undefined) {
+            windSpeed = weatherJson.current_weather.windspeed;
+          }
+          if (weatherJson.hourly && weatherJson.hourly.time && weatherJson.hourly.temperature_2m) {
+            const now = new Date();
+            const currentHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0);
+            
+            const times = weatherJson.hourly.time;
+            const temps = weatherJson.hourly.temperature_2m;
+            
+            let currentIndex = -1;
+            for (let i = 0; i < times.length; i++) {
+              const timeDate = new Date(times[i]);
+              if (timeDate >= currentHour) {
+                currentIndex = i;
+                break;
+              }
+            }
+            
+            if (currentIndex === -1) {
+              currentIndex = times.length - 1;
+            }
+            
+            const startIndex = Math.max(0, currentIndex - 6);
+            const endIndex = Math.min(times.length - 1, currentIndex + 6);
+            
+            hourlyData = times.slice(startIndex, endIndex + 1).map((time, index) => ({
+              time: time,
+              temp: temps[startIndex + index]
+            }));
+          }
+        }
+      } catch (weatherErr) {
+        console.error('Error fetching weather data:', weatherErr);
+      }
+    }
+    
     return res.status(200).json({
       temperature: row.Temperature,
       weatherCode: row.WeatherCode,
-      lastUpdated: row.LastUpdated
+      lastUpdated: row.LastUpdated,
+      windSpeed: windSpeed,
+      hourlyData: hourlyData
     });
   } catch (err) {
     console.error('Error in /weather:', err);
@@ -120,25 +109,20 @@ app.post('/weather/update', async (req, res) => {
     const city = req.body.city ;
     const longitude = Number(req.body.longitude);
     const latitude = Number(req.body.latitude);
-
-    if (!city) return res.status(400).json({ error: 'Missing city in request body' });
     
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`;
-
 
     const weatherResp = await fetch(weatherUrl);
 
     let weatherData;
-    const textBody = await weatherResp.text(); // read as text first
+    const textBody = await weatherResp.text();
 
-    // Try to parse as JSON
     try {
       weatherData = JSON.parse(textBody);
     } catch {
-      weatherData = null; // failed to parse JSON (likely HTML)
+      weatherData = null; 
     }
-console.log(weatherData);
-    // Handle HTTP errors
+
     if (!weatherResp.ok) {
       return res.status(502).json({
         error: `Weather API responded ${weatherResp.status}: ${textBody}`
@@ -151,9 +135,7 @@ console.log(weatherData);
 
     const temperature = weatherData.current_weather.temperature;
     const weatherCode = weatherData.current_weather.weathercode;
-    console.log(city);
-    console.log(temperature);
-    console.log(weatherCode);
+
     await db.query(
 
         'UPDATE weatherData SET Temperature = ?, WeatherCode = ?, LastUpdated = NOW() WHERE CityName = ?',
@@ -165,7 +147,6 @@ console.log(weatherData);
       });
     
 
-    
   } catch (err) {
     console.error('Error:', err);
     return res.status(500).json({ error: err.message || 'Internal server error' });

@@ -16,8 +16,7 @@
 .select-button {
   background: #0a1929;
   color: #ffffff;
-  border: 2px solid #1a3a5a;
-  border-right: none;
+  border: none;
   border-radius: 0;
   padding: 12px 24px;
   font-size: 16px;
@@ -31,35 +30,22 @@
 .select-button.first {
   border-top-left-radius: 8px;
   border-bottom-left-radius: 8px;
-  border-left: 2px solid #1a3a5a;
 }
 
 .select-button.last {
   border-top-right-radius: 8px;
   border-bottom-right-radius: 8px;
-  border-right: 2px solid #1a3a5a;
-}
-
-.select-button:not(.last) {
-  margin-right: -2px;
 }
 
 .select-button:hover {
   background: #1a3a5a;
-  border-color: #2a5298;
   z-index: 1;
 }
 
 .select-button.active {
   background: #2a5298;
-  border-color: #4a7bc8;
-  box-shadow: 0 4px 16px rgba(74, 123, 200, 0.4);
   font-weight: 600;
   z-index: 2;
-}
-
-.select-button.active:not(.last) {
-  border-right-color: #4a7bc8;
 }
 
 .select-button:active {
@@ -69,7 +55,7 @@
 .refresh-button {
   background: linear-gradient(135deg, #1a3a5a 0%, #0a1929 100%);
   color: #ffffff;
-  border: 2px solid #2a4a6a;
+  border: none;
   border-radius: 10px;
   padding: 12px 16px;
   font-size: 0;
@@ -103,7 +89,6 @@
 
 .refresh-button:hover {
   background: linear-gradient(135deg, #2a4a6a 0%, #1a3a5a 100%);
-  border-color: #3a5a7a;
   transform: translateY(-2px) scale(1.05);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
