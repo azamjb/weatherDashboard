@@ -1,0 +1,67 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: weather-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-rootpassword}
+      - MYSQL_DATABASE=${DB_NAME:-weatherDashboard}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - weather-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: weather-backend
+    ports:
+      - "3001:3000"
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-rootpassword}
+      - DB_NAME=${DB_NAME:-weatherDashboard}
+      - PORT=3000
+      - WEATHER_API_BASE_URL=${WEATHER_API_BASE_URL:-https://api.open-meteo.com/v1/forecast}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - weather-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./weatherDashboard
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:3001
+    container_name: weather-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - weather-network
+    restart: unless-stopped
+
+networks:
+  weather-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+

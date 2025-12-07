@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
@@ -7,24 +8,31 @@ app.use(cors());
 
 app.use(express.json());
 
-// MySQL connection
 const connection = mysql.createConnection({
-  host: '127.0.0.1',
-  user: 'root',
-  password: 'GuppyAzam123', 
-  database: 'weatherDashboard' 
+  host: process.env.DB_HOST || '127.0.0.1',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '', 
+  database: process.env.DB_NAME || 'weatherDashboard' 
 });
 
-connection.connect(err => {
-  if (err) throw err;
-  console.log('Connected to MySQL database!');
-});
+const connectWithRetry = () => {
+  connection.connect(err => {
+    if (err) {
+      console.error('Error connecting to MySQL:', err.message);
+      console.log('Retrying connection in 5 seconds...');
+      setTimeout(connectWithRetry, 5000);
+    } else {
+      console.log('Connected to MySQL database!');
+    }
+  });
+};
+
+connectWithRetry();
 
 const db = connection.promise();
 
 app.get('/weather', async (req, res) => {
   try {
-
     const city = (req.query.city || '').trim();
     if (!city) return res.status(400).json({ error: 'Missing ?city= parameter' });
 
@@ -38,14 +46,12 @@ app.get('/weather', async (req, res) => {
     }
 
     const row = rows[0];
-    
-    // Fetch current weather data for wind speed and hourly forecast
     let windSpeed = null;
     let hourlyData = [];
     if (row.Latitude && row.Longitude) {
       try {
-        // Get current weather and hourly forecast
-        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${row.Latitude}&longitude=${row.Longitude}&current_weather=true&hourly=temperature_2m&past_days=1&forecast_days=1`;
+        const weatherApiBaseUrl = process.env.WEATHER_API_BASE_URL || 'https://api.open-meteo.com/v1/forecast';
+        const weatherUrl = `${weatherApiBaseUrl}?latitude=${row.Latitude}&longitude=${row.Longitude}&current_weather=true&hourly=temperature_2m&past_days=1&forecast_days=1`;
         
         const weatherResponse = await fetch(weatherUrl);
 
@@ -88,7 +94,7 @@ app.get('/weather', async (req, res) => {
         console.error('Error fetching weather data:', weatherErr);
       }
     }
-    
+
     return res.status(200).json({
       temperature: row.Temperature,
       weatherCode: row.WeatherCode,
@@ -102,15 +108,13 @@ app.get('/weather', async (req, res) => {
   }
 });
 
-
 app.post('/weather/update', async (req, res) => {
   try {
-
-    const city = req.body.city ;
+    const city = req.body.city;
     const longitude = Number(req.body.longitude);
     const latitude = Number(req.body.latitude);
-    
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`;
+    const weatherApiBaseUrl = process.env.WEATHER_API_BASE_URL || 'https://api.open-meteo.com/v1/forecast';
+    const weatherUrl = `${weatherApiBaseUrl}?latitude=${latitude}&longitude=${longitude}&current_weather=true`;
 
     const weatherResp = await fetch(weatherUrl);
 
@@ -137,25 +141,22 @@ app.post('/weather/update', async (req, res) => {
     const weatherCode = weatherData.current_weather.weathercode;
 
     await db.query(
+      'UPDATE weatherData SET Temperature = ?, WeatherCode = ?, LastUpdated = NOW() WHERE CityName = ?',
+      [temperature, weatherCode, city]
+    );
 
-        'UPDATE weatherData SET Temperature = ?, WeatherCode = ?, LastUpdated = NOW() WHERE CityName = ?',
-        [temperature, weatherCode, city]
-      );
-      return res.json({
-        temperature, weatherCode,
-        message: 'City existed; coordinates updated'
-      });
-    
-
+    return res.json({
+      temperature,
+      weatherCode,
+      message: 'Weather data updated'
+    });
   } catch (err) {
     console.error('Error:', err);
     return res.status(500).json({ error: err.message || 'Internal server error' });
   }
 });
 
-
-// Start server
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

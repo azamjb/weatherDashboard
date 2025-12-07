@@ -5,8 +5,7 @@ export default function WeatherCard({ data }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [tooltipStyle, setTooltipStyle] = useState({});
   const [currentTimeString, setCurrentTimeString] = useState('');
-  
-  // Update time every minute
+
   useEffect(() => {
     if (!data.timezone) return;
     
@@ -20,14 +19,13 @@ export default function WeatherCard({ data }) {
       setCurrentTimeString(formatter.format(new Date()));
     };
     
-    updateTime(); // Update immediately
-    const interval = setInterval(updateTime, 60000); // Update every minute
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
     
     return () => clearInterval(interval);
   }, [data.timezone]);
-  
-  return (
 
+  return (
     <div className="weather-card">
       <div className="weather-card-main">
         <div className="weather-left">
@@ -44,8 +42,12 @@ export default function WeatherCard({ data }) {
           </div>
 
           <div className="weather-temp">
-            <span className="temp-value">{data.temperatureC.toFixed(1)}°C</span>
-            <span className="temp-feel">Feels like {Math.round(data.temperatureC)}°</span>
+            <span className="temp-value">
+              {data.temperatureC != null ? Number(data.temperatureC).toFixed(1) : '--'}°C
+            </span>
+            <span className="temp-feel">
+              Feels like {data.temperatureC != null ? Math.round(Number(data.temperatureC)) : '--'}°
+            </span>
           </div>
         </div>
 
@@ -59,7 +61,7 @@ export default function WeatherCard({ data }) {
               />
               {data.windSpeed != null && (
                 <div className="wind-speed">
-                  Wind: {data.windSpeed.toFixed(1)} km/h
+                  Wind: {Number(data.windSpeed).toFixed(1)} km/h
                 </div>
               )}
               <p className="weather-description">{data.description || "Unknown"}</p>
@@ -79,7 +81,8 @@ export default function WeatherCard({ data }) {
             }}
           >
             {(() => {
-              const temps = data.hourlyData.map(d => d.temp);
+              const temps = data.hourlyData.map(d => d.temp).filter(t => t != null).map(t => Number(t));
+              if (temps.length === 0) return null;
               const minTemp = Math.min(...temps);
               const maxTemp = Math.max(...temps);
               const tempRange = maxTemp - minTemp || 10;
@@ -90,7 +93,8 @@ export default function WeatherCard({ data }) {
               
               const getPointCoords = (i) => {
                 const x = (i / (data.hourlyData.length - 1)) * 600;
-                const y = 130 - ((data.hourlyData[i].temp - chartMin) / chartRange) * 110;
+                const temp = data.hourlyData[i].temp != null ? Number(data.hourlyData[i].temp) : chartMin;
+                const y = 130 - ((temp - chartMin) / chartRange) * 110;
                 return { x, y };
               };
 
@@ -173,7 +177,9 @@ export default function WeatherCard({ data }) {
                         })}
                       </div>
                       <div className="tooltip-temp">
-                        {data.hourlyData[hoveredIndex].temp.toFixed(1)}°C
+                        {data.hourlyData[hoveredIndex].temp != null 
+                          ? Number(data.hourlyData[hoveredIndex].temp).toFixed(1) 
+                          : '--'}°C
                       </div>
                     </div>
                   )}
@@ -187,7 +193,9 @@ export default function WeatherCard({ data }) {
                 return (
                   <div key={i} className={`chart-label ${isCurrent ? 'current-hour' : ''}`}>
                     <span className="chart-time">{date.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })}</span>
-                    <span className="chart-temp">{point.temp.toFixed(0)}°</span>
+                    <span className="chart-temp">
+                      {point.temp != null ? Number(point.temp).toFixed(0) : '--'}°
+                    </span>
                   </div>
                 );
               })}

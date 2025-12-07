@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import WeatherCard from './weatherCard'
 import SelectButton from './SelectButton'
-import descriptions from './assets/descriptions.json'
+import { formatTimeAgo, getWeatherBackgroundType, getWeatherInfo } from './utils/weatherUtils'
+import { API_URL } from './config'
 import './App.css'
 
 const cityData = {
@@ -38,57 +39,6 @@ const cities = [
   { name: "Vancouver" },
 ];
 
-
-const formatTimeAgo = (lastUpdated) => {
-  if (!lastUpdated) return null;
-  
-  const now = new Date();
-  const updated = new Date(lastUpdated);
-  const diffInSeconds = Math.floor((now - updated) / 1000);
-
-  if (diffInSeconds < 60) {
-    return `${diffInSeconds} second${diffInSeconds !== 1 ? 's' : ''} ago`;
-  }
-  
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
-  }
-  
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
-};
-
-const getWeatherBackgroundType = (weatherCode) => {
-  const code = parseInt(weatherCode, 10);
-  if (code === 0 || code === 1) return 'sunny';
-  if (code === 2) return 'partly-cloudy';
-  if (code === 3) return 'cloudy';
-  if (code === 45 || code === 48) return 'foggy';
-  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rainy';
-  if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return 'snowy';
-  if (code >= 95 && code <= 99) return 'stormy';
-  return 'partly-cloudy';
-};
-
-const getWeatherInfo = (weatherCode, timezone = 'UTC') => {
-  const code = String(weatherCode);
-  let weatherInfo = descriptions[code];
-  
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    hour: 'numeric',
-    hour12: false
-  });
-  const hour = parseInt(formatter.format(new Date()), 10);
-  const isDay = hour >= 6 && hour < 20;
-  
-  return {
-    ...(isDay ? weatherInfo.day : weatherInfo.night),
-    isDay: isDay
-  };
-};
-
 function App() {
   
   const [selectedCity, setSelectedCity] = useState("Vancouver");
@@ -103,7 +53,7 @@ function App() {
     setError(null);
     
     try {
-      const response = await fetch(`http://localhost:3000/weather?city=${encodeURIComponent(cityName)}`);
+      const response = await fetch(`${API_URL}/weather?city=${encodeURIComponent(cityName)}`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to fetch weather data' }));
@@ -145,7 +95,6 @@ function App() {
     }
   }, []);
 
-  
   const updateAndFetchWeather = useCallback(async (cityName) => {
     const cityInfo = cityData[cityName];
     if (!cityInfo || !cityInfo.latitude || !cityInfo.longitude) {
@@ -157,7 +106,7 @@ function App() {
     setError(null);
 
     try {
-      const updateResponse = await fetch('http://localhost:3000/weather/update', {
+      const updateResponse = await fetch(`${API_URL}/weather/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -197,8 +146,6 @@ function App() {
     };
   }, [selectedCity, updateAndFetchWeather]);
 
-
-  // Helper to get day/night status for a city
   const getIsDay = useCallback((timezone) => {
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
@@ -209,7 +156,6 @@ function App() {
     return hour >= 6 && hour < 20;
   }, []);
 
-  // Update background based on weather and day/night
   useEffect(() => {
     if (!weatherData) {
       document.body.className = '';
@@ -230,7 +176,6 @@ function App() {
     return () => clearInterval(intervalId);
   }, [weatherData, getIsDay]);
 
-  // Update time ago display every second
   useEffect(() => {
     if (!weatherData?.lastUpdated) {
       setTimeAgo(null);
