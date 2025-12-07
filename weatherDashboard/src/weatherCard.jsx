@@ -72,7 +72,7 @@ export default function WeatherCard({ data }) {
 
       {data.hourlyData?.length > 0 && (
         <div className="weather-chart-container">
-          <h3 className="chart-title">12-Hour Temperature Forecast</h3>
+          <h3 className="chart-title">Hourly Forecast</h3>
             <div 
             className="chart-wrapper"
             onMouseLeave={() => {
