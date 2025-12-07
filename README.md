@@ -10,5 +10,4 @@ Dynamic animations and background colors based on weather conditions / time of d
 Auto refreshing of data, clean intuitive user interface
 Dockerization
 
-
-<img width="798" height="808" alt="Screenshot 2025-12-07 at 6 31 17 PM" src="https://github.com/user-attachments/assets/278030c3-6a8d-4a1b-aae6-b499c771a8c8" />
+<img width="738" height="802" alt="Screenshot 2025-12-07 at 6 42 08 PM" src="https://github.com/user-attachments/assets/8c1aac9c-a667-4b10-96c9-992796507bba" />
