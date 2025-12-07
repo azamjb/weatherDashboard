@@ -13,7 +13,8 @@
   border: 1px solid #1a3a5a;
   box-sizing: border-box;
   align-items: flex-start;
-  margin: 24px auto;
+  margin: 0 auto;
+  margin-top: 0;
   position: relative;
 }
 

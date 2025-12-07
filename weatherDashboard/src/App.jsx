@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import reactLogo from './assets/react.svg'
 import WeatherCard from './weatherCard'
 import viteLogo from '/vite.svg'
@@ -14,6 +14,7 @@ const cityData = {
     country: "Canada",
     temperatureC: null,
     icon: null,
+    lastUpdated: null,
   },
   London: {
     city: "London",
@@ -22,6 +23,8 @@ const cityData = {
     country: "United Kingdom",
     temperatureC: null,
     icon: null,
+    lastUpdated: null,
+    
   },
   "New York": {
     city: "New York",
@@ -30,6 +33,7 @@ const cityData = {
     country: "United States",
     temperatureC: null,
     icon: null,
+    lastUpdated: null,
   },
   Vancouver: {
     city: "Vancouver",
@@ -38,6 +42,7 @@ const cityData = {
     country: "Canada",
     temperatureC: null,
     icon: null,
+    lastUpdated: null,
   },
 };
 
@@ -47,6 +52,45 @@ const cities = [
   { name: "New York" },
   { name: "Vancouver" },
 ];
+
+// Helper function to format time ago
+const formatTimeAgo = (lastUpdated) => {
+  if (!lastUpdated) return null;
+  
+  try {
+    const now = new Date();
+    // Handle MySQL DATETIME format (e.g., "2024-01-01 12:00:00")
+    const updated = new Date(lastUpdated);
+    
+    // Check if date is valid
+    if (isNaN(updated.getTime())) {
+      console.error('Invalid date:', lastUpdated);
+      return null;
+    }
+    
+    const diffInSeconds = Math.floor((now - updated) / 1000);
+    
+    // If negative, the date is in the future (timezone issue or invalid date)
+    if (diffInSeconds < 0) {
+      return 'just now';
+    }
+    
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} second${diffInSeconds !== 1 ? 's' : ''} ago`;
+    }
+    
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
+    }
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
+  } catch (err) {
+    console.error('Error formatting time ago:', err);
+    return null;
+  }
+};
 
 // todo
 const getWeatherIcon = (weatherCode) => {
@@ -62,6 +106,8 @@ function App() {
   const [weatherData, setWeatherData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [timeAgo, setTimeAgo] = useState(null);
+  const lastUpdatedRef = useRef(null);
 
   const fetchWeatherData = useCallback(async (cityName) => {
     if (!cityName) return;
@@ -84,9 +130,11 @@ function App() {
         country: cityData[cityName]?.country,
         temperatureC: data.temperature,
         icon: getWeatherIcon(data.weatherCode),
+        lastUpdated: data.lastUpdated,
       };
       
       setWeatherData(transformedData);
+      lastUpdatedRef.current = data.lastUpdated;
       
     } catch (err) {
       console.error('Error fetching weather data:', err);
@@ -139,8 +187,8 @@ function App() {
 
   useEffect(() => {
     updateAndFetchWeather(selectedCity);
-
-  }, []); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount 
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -151,6 +199,31 @@ function App() {
       clearInterval(intervalId);
     };
   }, [selectedCity, updateAndFetchWeather]);
+
+  // Update time ago display every second
+  useEffect(() => {
+    if (!weatherData?.lastUpdated) {
+      setTimeAgo(null);
+      lastUpdatedRef.current = null;
+      return;
+    }
+
+    lastUpdatedRef.current = weatherData.lastUpdated;
+    
+    // Update immediately
+    setTimeAgo(formatTimeAgo(weatherData.lastUpdated));
+
+    // Update every second - use ref to get current value
+    const intervalId = setInterval(() => {
+      if (lastUpdatedRef.current) {
+        setTimeAgo(formatTimeAgo(lastUpdatedRef.current));
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [weatherData]);
 
   const handleSelectCity = (cityName) => {
     setSelectedCity(cityName);
@@ -173,6 +246,11 @@ function App() {
       </div>
 
       <div className="card-wrapper">
+        {timeAgo && (
+          <div className="last-updated">
+            Last updated {timeAgo}
+          </div>
+        )}
 
         {loading && <p>Loading weather data...</p>}
         {error && !weatherData && <p style={{ color: 'red' }}>Error: {error}</p>}

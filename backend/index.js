@@ -93,7 +93,7 @@ app.get('/weather', async (req, res) => {
     if (!city) return res.status(400).json({ error: 'Missing ?city= parameter' });
 
     const [rows] = await db.query(
-      'SELECT CityName, Temperature, WeatherCode FROM weatherData WHERE CityName = ? LIMIT 1',
+      'SELECT CityName, Temperature, WeatherCode, LastUpdated FROM weatherData WHERE CityName = ? LIMIT 1',
       [city]
     );
 
@@ -104,7 +104,8 @@ app.get('/weather', async (req, res) => {
     const row = rows[0];
     return res.status(200).json({
       temperature: row.Temperature,
-      weatherCode: row.WeatherCode
+      weatherCode: row.WeatherCode,
+      lastUpdated: row.LastUpdated
     });
   } catch (err) {
     console.error('Error in /weather:', err);
@@ -155,7 +156,7 @@ console.log(weatherData);
     console.log(weatherCode);
     await db.query(
 
-        'UPDATE weatherData SET Temperature = ?, WeatherCode = ? WHERE CityName = ?',
+        'UPDATE weatherData SET Temperature = ?, WeatherCode = ?, LastUpdated = NOW() WHERE CityName = ?',
         [temperature, weatherCode, city]
       );
       return res.json({
