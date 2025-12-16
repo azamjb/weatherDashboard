@@ -5,15 +5,18 @@ export default function SelectButton({ cities, selectedCity, onSelectCity, onRef
   return (
     <div className="select-button-container">
       <div className="select-buttons-group">
-        {cities.map((city, index) => (
-          <button key={city.name}
-            className={`select-button ${selectedCity === city.name ? "active" : ""} ${ index === 0 ? "first" : "" } ${index === cities.length - 1 ? "last" : ""}`} onClick={() => onSelectCity(city.name)}
+        {cities.map((city, index) => ( // looping over each city
+
+          <button key={city.name} // building dynamic css
+            className={`select-button ${selectedCity === city.name ? "active" : ""}
+            ${ index === 0 ? "first" : "" } 
+            ${index === cities.length - 1 ? "last" : ""}`} onClick={() => onSelectCity(city.name)}  // updating selected city on click
           >
             {city.name}
           </button>
         ))}
       </div>
-      <button 
+      <button // manual refresh button
         className="refresh-button" 
         onClick={onRefresh} 
         aria-label="Refresh"

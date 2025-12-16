@@ -159,7 +159,6 @@
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
 }
 
-/* Dynamic backgrounds for icon container - bright with color variation */
 .weather-icon-sunny {
   background: linear-gradient(135deg, rgba(173, 216, 230, 0.75) 0%, rgba(135, 206, 250, 0.75) 50%, rgba(100, 180, 255, 0.7) 100%);
 }
@@ -254,7 +253,6 @@
   }
 }
 
-/* Chart Container */
 .weather-chart-container {
   margin-top: 8px;
   padding-top: 24px;
@@ -446,6 +444,7 @@
 .r1 { left: 35px; animation-delay: 0ms; }
 .r2 { left: 65px; animation-delay: 120ms; }
 .r3 { left: 95px; animation-delay: 240ms; }
+
 @keyframes rainFall {
   0% { opacity: 0; transform: translateY(0); }
   50% { opacity: 1; transform: translateY(15px); }

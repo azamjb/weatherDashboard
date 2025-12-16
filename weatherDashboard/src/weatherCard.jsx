@@ -6,8 +6,7 @@ export default function WeatherCard({ data }) {
   const [tooltipStyle, setTooltipStyle] = useState({});
   const [currentTimeString, setCurrentTimeString] = useState('');
 
-  useEffect(() => {
-    if (!data.timezone) return;
+  useEffect(() => { // set current time string for specific timezone
     
     const updateTime = () => {
       const formatter = new Intl.DateTimeFormat('en-US', {
@@ -29,58 +28,55 @@ export default function WeatherCard({ data }) {
     <div className="weather-card">
       <div className="weather-card-main">
         <div className="weather-left">
+
           <div className="weather-location">
             <div className="weather-city-row">
               <h2 className="weather-city">{data.city}</h2>
               {currentTimeString && (
-                <span className="weather-time">
-                  {currentTimeString}
-                </span>
+                <span className="weather-time"> {currentTimeString} </span>
               )}
             </div>
             <span className="weather-country">{data.country}</span>
           </div>
 
           <div className="weather-temp">
-            <span className="temp-value">
-              {data.temperatureC != null ? Number(data.temperatureC).toFixed(1) : '--'}°C
-            </span>
-            <span className="temp-feel">
-              Feels like {data.temperatureC != null ? Math.round(Number(data.temperatureC)) : '--'}°
-            </span>
+            <span className="temp-value"> {data.temperatureC != null ? Number(data.temperatureC).toFixed(1) : '--'}°C </span> 
+            <span className="temp-feel"> Feels like {data.temperatureC != null ? Math.round(Number(data.temperatureC)) : '--'}° </span>
           </div>
+
         </div>
 
         <div className="weather-right">
-          {data.image && (
-            <div className={`weather-icon-container weather-icon-${data.backgroundType || 'partly-cloudy'}`}>
-              <img 
-                src={data.image} 
-                alt={data.description || "Weather icon"} 
-                className="weather-icon-image"
-              />
-              {data.windSpeed != null && (
-                <div className="wind-speed">
-                  Wind: {Number(data.windSpeed).toFixed(1)} km/h
-                </div>
-              )}
-              <p className="weather-description">{data.description || "Unknown"}</p>
-            </div>
-          )}
+
+          <div className={`weather-icon-container weather-icon-${data.backgroundType || 'partly-cloudy'}`}> 
+            <img 
+              src={data.image} 
+              alt={data.description || "Weather icon"} 
+              className="weather-icon-image"
+            />
+            {data.windSpeed != null && (
+              <div className="wind-speed">
+                Wind: {Number(data.windSpeed).toFixed(1)} km/h
+              </div>
+            )}
+            <p className="weather-description">{data.description || "Unknown"}</p>
+
+          </div>
+          
         </div>
       </div>
 
       {data.hourlyData?.length > 0 && (
+
         <div className="weather-chart-container">
+
           <h3 className="chart-title">Hourly Forecast</h3>
             <div 
-            className="chart-wrapper"
-            onMouseLeave={() => {
-              setHoveredIndex(null);
-              setTooltipStyle({});
-            }}
-          >
+              className="chart-wrapper"
+              onMouseLeave={() => { setHoveredIndex(null); setTooltipStyle({}); }} // tooltips hovering toggle
+             >
             {(() => {
+
               const temps = data.hourlyData.map(d => d.temp).filter(t => t != null).map(t => Number(t));
               if (temps.length === 0) return null;
               const minTemp = Math.min(...temps);
@@ -90,38 +86,43 @@ export default function WeatherCard({ data }) {
               const chartMin = minTemp - padding;
               const chartMax = maxTemp + padding;
               const chartRange = chartMax - chartMin;
+
+              // Finding ranges & min / max so graph can scale accordingly
               
-              const getPointCoords = (i) => {
+              const getPointCoords = (i) => { // converting hourly data points to x,y coordinates
+
                 const x = (i / (data.hourlyData.length - 1)) * 600;
                 const temp = data.hourlyData[i].temp != null ? Number(data.hourlyData[i].temp) : chartMin;
                 const y = 130 - ((temp - chartMin) / chartRange) * 110;
                 return { x, y };
+
               };
 
               return (
                 <>
                   <svg className="temperature-chart" viewBox="0 0 600 140" preserveAspectRatio="none">
-                    <polyline
+
+                    <polyline // temperature line
+
                       className="temperature-line"
                       points={data.hourlyData.map((point, i) => {
                         const { x, y } = getPointCoords(i);
                         return `${x},${y}`;
                       }).join(' ')}
-                      fill="none"
-                      stroke="url(#temperatureGradient)"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                      fill="none" stroke="url(#temperatureGradient)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+
                     />
-                    {data.hourlyData.map((point, i) => {
+
+                    {data.hourlyData.map((point, i) => { // looping through hourly data points
+
                       const { x, y } = getPointCoords(i);
-                      const segmentWidth = 600 / (data.hourlyData.length - 1);
+                      const segmentWidth = 600 / (data.hourlyData.length - 1); // hover zone
                       const startX = i === 0 ? 0 : x - segmentWidth / 2;
                       const endX = i === data.hourlyData.length - 1 ? 600 : x + segmentWidth / 2;
                       
                       return (
                         <g key={i}>
-                          <rect
+                          <rect // hover rectangle
                             x={startX}
                             y={0}
                             width={endX - startX}
@@ -129,7 +130,7 @@ export default function WeatherCard({ data }) {
                             fill="transparent"
                             style={{ cursor: 'pointer' }}
                             onMouseEnter={(e) => {
-                              setHoveredIndex(i);
+                              setHoveredIndex(i); // set hover point on hover
                               const svg = e.currentTarget.closest('svg');
                               if (svg) {
                                 const svgRect = svg.getBoundingClientRect();
@@ -139,10 +140,11 @@ export default function WeatherCard({ data }) {
                                   left: `${x * scaleX}px`,
                                   top: `${(y * scaleY) - 25}px`
                                 });
+                                // positioning tooltip ^
                               }
                             }}
                           />
-                          <circle
+                          <circle // dot for each point
                             cx={x}
                             cy={y}
                             r={hoveredIndex === i ? 6 : 4}
@@ -164,7 +166,7 @@ export default function WeatherCard({ data }) {
                       </linearGradient>
                     </defs>
                   </svg>
-                  {hoveredIndex !== null && (
+                  {hoveredIndex !== null && ( // tooltip display
                     <div 
                       className="chart-tooltip"
                       style={tooltipStyle}
@@ -186,8 +188,8 @@ export default function WeatherCard({ data }) {
                 </>
               );
             })()}
-            <div className="chart-labels">
-              {data.hourlyData.map((point, i) => {
+            <div className="chart-labels"> 
+              {data.hourlyData.map((point, i) => { // x axis labels
                 const date = new Date(point.time);
                 const isCurrent = i === Math.floor(data.hourlyData.length / 2);
                 return (
