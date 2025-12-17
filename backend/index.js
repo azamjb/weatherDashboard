@@ -48,7 +48,7 @@ app.get('/weather', async (req, res) => { // Retrieving weather data from db, pl
 
     try {
 
-      const weatherApiBaseUrl = process.env.WEATHER_API_BASE_URL || 'https://api.open-meteo.com/v1/forecast';
+      const weatherApiBaseUrl = process.env.WEATHER_API_BASE_URL;
       const weatherUrl = `${weatherApiBaseUrl}?latitude=${row.Latitude}&longitude=${row.Longitude}&current_weather=true&hourly=temperature_2m&past_days=1&forecast_days=1`;
       
       const weatherResponse = await fetch(weatherUrl); // fetching hourly data and windspeed from external API
@@ -56,10 +56,8 @@ app.get('/weather', async (req, res) => { // Retrieving weather data from db, pl
       if (weatherResponse.ok) {
         const weatherJson = await weatherResponse.json();
         
-        if (weatherJson.current_weather && weatherJson.current_weather.windspeed !== undefined) {
-          windSpeed = weatherJson.current_weather.windspeed; // extract windspeed
-        }
-
+        windSpeed = weatherJson.current_weather.windspeed; // extract windspeed
+      
         if (weatherJson.hourly && weatherJson.hourly.time && weatherJson.hourly.temperature_2m) {
           const now = new Date();
           const currentHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0); // retrieve current hour
@@ -117,7 +115,7 @@ app.post('/weather/update', async (req, res) => { // updating weather data store
     const longitude = Number(req.body.longitude);
     const latitude = Number(req.body.latitude);
 
-    const weatherApiBaseUrl = process.env.WEATHER_API_BASE_URL || 'https://api.open-meteo.com/v1/forecast';
+    const weatherApiBaseUrl = process.env.WEATHER_API_BASE_URL;
     const weatherUrl = `${weatherApiBaseUrl}?latitude=${latitude}&longitude=${longitude}&current_weather=true`;
 
     const weatherResp = await fetch(weatherUrl); // call API for current weather

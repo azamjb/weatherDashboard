@@ -360,31 +360,6 @@
   font-weight: 700;
 }
 
-/* SUNNY */
-.sun-container {
-  position: relative;
-  width: 140px;
-  height: 140px;
-}
-.sun-core {
-  width: 70px;
-  height: 70px;
-  background: #ffdd55;
-  border-radius: 50%;
-  position: absolute;
-  top: 35px;
-  left: 35px;
-}
-.sun-rays {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  border: 6px solid #ffcc33;
-  animation: spin 6s linear infinite;
-}
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* PARTLY CLOUDY */

@@ -68,6 +68,7 @@ function App() {
       const weatherInfo = getWeatherInfo(data.weatherCode, timezone); // util function for weather info
       const backgroundType = getWeatherBackgroundType(data.weatherCode); // util function for dynamic background type
       const backgroundTypeWithTime = weatherInfo.isDay ? backgroundType : `${backgroundType}-night`;
+      document.body.className = `weather-bg-${backgroundTypeWithTime}`; 
       
       const transformedData = {
         city: cityName,
@@ -144,37 +145,6 @@ function App() {
     };
   }, [selectedCity, updateAndFetchWeather]); // timer is reset whenever city changes
 
-  const getIsDay = useCallback((timezone) => { // get current hour in city timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      hour: 'numeric',
-      hour12: false
-    });
-    const hour = parseInt(formatter.format(new Date()), 10);
-    return hour >= 6 && hour < 20;
-  }, []);
-
-  useEffect(() => { // keeps page background in sync with current city weather and time
-
-    if (!weatherData) {
-      document.body.className = '';
-      return;
-    }
-
-    const updateBackground = () => { // update page background based on weather and time
-
-      const cityInfo = cityData[weatherData.city];
-      const timezone = cityInfo?.timezone || 'UTC';
-      const isDay = getIsDay(timezone);
-      const baseBackgroundType = getWeatherBackgroundType(weatherData.weatherCode);
-      const backgroundTypeWithTime = isDay ? baseBackgroundType : `${baseBackgroundType}-night`;
-      document.body.className = `weather-bg-${backgroundTypeWithTime}`; // apply corresponding css style to body
-    };
-
-    updateBackground();
-    const intervalId = setInterval(updateBackground, 60 * 60 * 1000);
-    return () => clearInterval(intervalId);
-  }, [weatherData, getIsDay]);
 
   useEffect(() => {
 
