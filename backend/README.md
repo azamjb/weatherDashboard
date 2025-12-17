@@ -8,7 +8,7 @@ Create a `.env` file in the backend directory with the following variables:
 # Database Configuration
 DB_HOST=127.0.0.1
 DB_USER=root
-DB_PASSWORD=your_password_here
+DB_PASSWORD=
 DB_NAME=weatherDashboard
 
 # Server Configuration

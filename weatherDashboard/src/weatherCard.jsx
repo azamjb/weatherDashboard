@@ -49,6 +49,7 @@ export default function WeatherCard({ data }) {
         <div className="weather-right">
 
           <div className={`weather-icon-container weather-icon-${data.backgroundType || 'partly-cloudy'}`}> 
+            
             <img 
               src={data.image} 
               alt={data.description || "Weather icon"} 

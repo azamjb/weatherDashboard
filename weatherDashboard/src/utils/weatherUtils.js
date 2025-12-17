@@ -46,7 +46,7 @@ export const getWeatherInfo = (weatherCode, timezone = 'UTC') => { // returning 
     hour12: false
   });
   const hour = parseInt(formatter.format(new Date()), 10); // gets current hour (24 hr time) in a specific timezone
-  const isDay = hour >= 6 && hour < 20; // whether it is day or night
+  const isDay = hour >= 6 && hour < 20; // whether it is day or night (6am-8pm)
   
   return {
     ...(isDay ? weatherInfo.day : weatherInfo.night),

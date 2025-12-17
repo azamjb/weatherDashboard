@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import WeatherCard from './weatherCard'
 import SelectButton from './SelectButton'
 import { formatTimeAgo, getWeatherBackgroundType, getWeatherInfo } from './utils/weatherUtils'
@@ -46,7 +46,6 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [timeAgo, setTimeAgo] = useState(null); // last updated time ago string
-  const lastUpdatedRef = useRef(null);
 
   const fetchWeatherData = useCallback(async (cityName) => { // Function to fetch weather data from backend
     
@@ -86,7 +85,6 @@ function App() {
       };
       
       setWeatherData(transformedData); // set weather data state
-      lastUpdatedRef.current = data.lastUpdated; // reset last updated
       
     } catch (err) {
       console.error('Error fetching weather data:', err);
@@ -182,17 +180,15 @@ function App() {
 
     if (!weatherData?.lastUpdated) {
       setTimeAgo(null);
-      lastUpdatedRef.current = null;
       return;
     }
 
-    lastUpdatedRef.current = weatherData.lastUpdated;
     setTimeAgo(formatTimeAgo(weatherData.lastUpdated));
 
     const intervalId = setInterval(() => { // start timer to update "time ago" string every second
-      if (lastUpdatedRef.current) {
-        setTimeAgo(formatTimeAgo(lastUpdatedRef.current));
-      }
+      
+        setTimeAgo(formatTimeAgo(weatherData.lastUpdated));
+      
     }, 1000);
 
     return () => clearInterval(intervalId);
